@@ -3,6 +3,9 @@
 
 #define ROTATION_CONSTANT 180
 
+#define pixy_address 0x6 //Pixy I2C address
+#define pixyinfoamount 14 //Pixy Bytes to receive
+typedef unsigned char byte; //Create a Variable Type for 8 bits
 
 class Robot: public IterativeRobot
 {
@@ -12,13 +15,17 @@ class Robot: public IterativeRobot
 	LiveWindow *lw;
 	VictorSP testmotor,testservo;
 	//Servo testservo;
-	I2C i2c;
 	PWM thing;
 
 	char *chara;
  	int hold,toggle,Val;
 	float speed,currPos,heldPos,kRot,kVal;
 	bool work,latch,turning;
+
+	I2C *i2channel; //Creates the I2C stuff with a pointer
+
+
+
 
 
 public:
@@ -32,7 +39,6 @@ public:
 		lw(LiveWindow::GetInstance()),
 		testmotor(0),
 		testservo(1),
-		i2c(I2C::Port::kOnboard,8),
 		thing(1),
 
 		speed(0),
@@ -49,8 +55,37 @@ public:
 		turning(0)
 
 	{
+		i2channel = new I2C(I2C::Port::kOnboard, pixy_address); //Initializes the I2C Class the 8 is also the
 		myRobot.SetExpiration(0.1); //Code from Example
 		// gyro.InitGyro();
+	}
+
+	//Call this to update pixy data
+	void getPixydata()
+	{
+		//Setup Variables for the Target
+		short targetnumb, x_axis, y_axis, height, width;
+		byte targetdata[pixyinfoamount];
+
+		//read from the i2c bus
+		i2channel->Read(pixy_address, pixyinfoamount, targetdata);
+
+		//Adds Bytes together to make real numbers
+		targetnumb = targetdata[4]*10 + targetdata[5];
+		x_axis = targetdata[6]*10 + targetdata[7];
+		y_axis = targetdata[8]*10 + targetdata[9];
+		height = targetdata[10]*10 + targetdata[11];
+		width = targetdata[12]*10 + targetdata[13];
+
+		//Show Data on Smart Dashboard
+		SmartDashboard::PutNumber("Target Number", targetnumb);
+		SmartDashboard::PutNumber("X Axis", x_axis);
+		SmartDashboard::PutNumber("X Axis", y_axis);
+		SmartDashboard::PutNumber("X Axis", height);
+		SmartDashboard::PutNumber("X Axis", width);
+
+		//To no bog down the I2C Port
+		Wait(0.050);
 	}
 
 
@@ -168,17 +203,20 @@ private:
 		}
 
 		//testservo.SetSpeed(Val);
-		thing.SetRaw(Val);
+		//thing.SetRaw(Val);
 		//i2c.Write(8,Val);
 		//testmotor.SetSpeed(speed);
 
 		//SmartDashboard::PutNumber("X",pixy.blocks[0].x);
 		//SmartDashboard::PutNumber("Y",pixy.blocks[0].y);
-		SmartDashboard::PutBoolean("Did we fail?",i2c.Write(8,Val));
+		//SmartDashboard::PutBoolean("Did we fail?",i2c.Write(8,Val));
 		SmartDashboard::PutNumber("kVal",kVal);
 		SmartDashboard::PutNumber("Val",Val);
 		SmartDashboard::PutNumber("Angle",(heldPos-currPos));
 		SmartDashboard::PutNumber("Speed",speed);
+
+		//Gets Pixy Values
+		getPixydata();
 	}
 
 	//Dunno what to do with this
