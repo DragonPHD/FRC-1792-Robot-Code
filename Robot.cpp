@@ -1,7 +1,8 @@
 #include "SPI.h"
 #include "WPILib.h"
 
-#define ROTATION_CONSTANT 360
+#define ROTATION_CONSTANT 180
+
 
 class Robot: public IterativeRobot
 {
@@ -11,11 +12,13 @@ class Robot: public IterativeRobot
 	LiveWindow *lw;
 	VictorSP testmotor,testservo;
 	//Servo testservo;
+	I2C i2c;
+	PWM thing;
 
-
-	int hold;
-	float speed,currPos,heldPos,kRot;
-	bool work,toggle,latch,turning;
+	char *chara;
+ 	int hold,toggle,Val;
+	float speed,currPos,heldPos,kRot,kVal;
+	bool work,latch,turning;
 
 
 public:
@@ -29,9 +32,14 @@ public:
 		lw(LiveWindow::GetInstance()),
 		testmotor(0),
 		testservo(1),
+		i2c(I2C::Port::kOnboard,8),
+		thing(1),
 
 		speed(0),
+		chara(0),
 		hold(0),
+		kVal(0),
+		Val(0),
 		currPos(0),
 		heldPos(0),
 		kRot(0),
@@ -63,6 +71,12 @@ private:
 
 	void TeleopPeriodic()	//Teleoperated Begins
 	{
+
+
+
+
+
+
 
 		kRot=ROTATION_CONSTANT;
 		currPos=-stick.GetRawAxis(3)*360;
@@ -111,22 +125,58 @@ private:
 		if(stick.GetRawButton(6)&&!latch)
 		{
 			latch=true;
-			toggle=!toggle;
+			toggle=toggle+1;
+			if(toggle==5)
+			{
+				toggle=1;
+			}
 		}
 		else if(!stick.GetRawButton(6)&&latch)
 		{
 			latch=false;
 		}
-		if(toggle)
+		if(toggle==1)
 		{
-
+			kVal=10;
+		}
+		else if(toggle==2)
+		{
+			kVal=1;
+		}
+		else if(toggle==3)
+		{
+			kVal=0.1;
+		}
+		else if(toggle==4)
+		{
+			kVal=0.01;
 		}
 
+		if(stick.GetRawButton(5)&&!work)
+		{
+			Val=Val+kVal;
+			work=true;
+		}
+		else if(stick.GetRawButton(3)&&!work)
+		{
+			Val=Val-kVal;
+			work=true;
+		}
+		else if(!stick.GetRawButton(5)&&!stick.GetRawButton(3)&&work)
+		{
+			work=false;
+		}
 
+		//testservo.SetSpeed(Val);
+		thing.SetRaw(Val);
+		//i2c.Write(8,Val);
 		//testmotor.SetSpeed(speed);
 
 		//SmartDashboard::PutNumber("X",pixy.blocks[0].x);
 		//SmartDashboard::PutNumber("Y",pixy.blocks[0].y);
+		SmartDashboard::PutBoolean("Did we fail?",i2c.Write(8,Val));
+		SmartDashboard::PutNumber("kVal",kVal);
+		SmartDashboard::PutNumber("Val",Val);
 		SmartDashboard::PutNumber("Angle",(heldPos-currPos));
 		SmartDashboard::PutNumber("Speed",speed);
 	}
