@@ -95,18 +95,19 @@ public:
 
 	//Call this to update the Arduino Color
 	void LEDcolor(){
-		//Send Color to Arduino
-		arduinoi2c->Write(arduino_address, color);
+		//Checks if Color Is Changed
+		color=round(SmartDashboard::GetNumber("LED Color", color)); //Gets Value from User
+		if(color!=oldcolor)
+		{
+			//Send Color to Arduino
+			arduinoi2c->Write(arduino_address, color);
 
-		//Set oldcolor to color so Does not run again until new color is entered
-		oldcolor=color;
+			//Set oldcolor to color so Does not run again until new color is entered
+			oldcolor=color;
 
-		//Show Data on Smart Dashboard
-		//Unknown if this is needed.
-		//SmartDashboard::GetNumber("Color Number", color);
-
-		//To no bog down the I2C Port
-		Wait(0.050);
+			//To no bog down the I2C Port
+			Wait(0.050);
+		}
 	}
 
 
@@ -239,13 +240,8 @@ private:
 		//Gets Pixy Values
 		getPixydata();
 
-		//Checks if Color Is Changed
-		color=SmartDashboard::GetNumber("LED Color", color); //Gets Value from User
-		if(color!=oldcolor)
-		{
-			//If so runs Arduino Color Change
-			LEDcolor();
-		}
+		//Checks for new Color and Sends to Arduino
+		LEDcolor();
 	}
 
 	//Dunno what to do with this
