@@ -5,6 +5,7 @@
 
 #define pixy_address 0x6 //Pixy I2C address
 #define pixyinfoamount 14 //Pixy Bytes to receive
+#define arduino_address 0x8 //Arduino I2C address
 typedef unsigned char byte; //Create a Variable Type for 8 bits
 
 class Robot: public IterativeRobot
@@ -18,11 +19,12 @@ class Robot: public IterativeRobot
 	PWM thing;
 
 	char *chara;
- 	int hold,toggle,Val;
+ 	int hold,toggle,Val,color,oldcolor;
 	float speed,currPos,heldPos,kRot,kVal;
 	bool work,latch,turning;
 
-	I2C *i2channel; //Creates the I2C stuff with a pointer
+	I2C *pixyi2c; //Creates the Pixy I2C stuff with a pointer
+	I2C *arduinoi2c; //Creates the Arduino I2C stuff with a pointer
 
 
 
@@ -52,10 +54,13 @@ public:
 		work(0),
 		toggle(0),
 		latch(0),
-		turning(0)
+		turning(0),
+		color(2),
+		oldcolor(0)
 
 	{
-		i2channel = new I2C(I2C::Port::kOnboard, pixy_address); //Initializes the I2C Class the 8 is also the
+		pixyi2c = new I2C(I2C::Port::kOnboard, pixy_address); //Initializes the I2C Class for the Pixy
+		arduinoi2c = new I2C(I2C::Port::kOnboard, pixy_address); //Initializes the I2C Class for the Arduino
 		myRobot.SetExpiration(0.1); //Code from Example
 		// gyro.InitGyro();
 	}
@@ -68,7 +73,7 @@ public:
 		byte targetdata[pixyinfoamount];
 
 		//read from the i2c bus
-		i2channel->Read(pixy_address, pixyinfoamount, targetdata);
+		pixyi2c->Read(pixy_address, pixyinfoamount, targetdata);
 
 		//Adds Bytes together to make real numbers
 		targetnumb = targetdata[4]*10 + targetdata[5];
@@ -80,9 +85,25 @@ public:
 		//Show Data on Smart Dashboard
 		SmartDashboard::PutNumber("Target Number", targetnumb);
 		SmartDashboard::PutNumber("X Axis", x_axis);
-		SmartDashboard::PutNumber("X Axis", y_axis);
-		SmartDashboard::PutNumber("X Axis", height);
-		SmartDashboard::PutNumber("X Axis", width);
+		SmartDashboard::PutNumber("Y Axis", y_axis);
+		SmartDashboard::PutNumber("Height", height);
+		SmartDashboard::PutNumber("Width", width);
+
+		//To no bog down the I2C Port
+		Wait(0.050);
+	}
+
+	//Call this to update the Arduino Color
+	void LEDcolor(){
+		//Send Color to Arduino
+		arduinoi2c->Write(arduino_address, color);
+
+		//Set oldcolor to color so Does not run again until new color is entered
+		oldcolor=color;
+
+		//Show Data on Smart Dashboard
+		//Unknown if this is needed.
+		//SmartDashboard::GetNumber("Color Number", color);
 
 		//To no bog down the I2C Port
 		Wait(0.050);
@@ -217,6 +238,14 @@ private:
 
 		//Gets Pixy Values
 		getPixydata();
+
+		//Checks if Color Is Changed
+		color=SmartDashboard::GetNumber("LED Color", color); //Gets Value from User
+		if(color!=oldcolor)
+		{
+			//If so runs Arduino Color Change
+			LEDcolor();
+		}
 	}
 
 	//Dunno what to do with this
