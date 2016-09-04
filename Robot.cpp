@@ -2,6 +2,8 @@
 #include "WPILib.h"
 
 #define ROTATION_CONSTANT 180
+#define BLACKOUT_TIME 54
+#include <array>
 
 
 #define PIXY_START_WORD 0xaa55
@@ -22,10 +24,13 @@ class Robot: public IterativeRobot
 
 
 	char *chara,holder;
- 	int hold,toggle,Val,color,oldcolor,pixytestamount,bits,BufferSize;
+ 	int hold,toggle,Val,color,oldcolor,pixytestamount,bits,BufferSize,blackoutcount,blackouthigh;
 	float speed,currPos,heldPos,kRot,kVal;
-	bool work,latch,turning,latchB;
+	bool work,latch,turning,latchB,blackout,noobject;
 	int sync = 0;
+	//byte shiftarray[],unscrambledeggs[],empty[];
+	std::array<byte,90> shiftarray;
+	std::array<int,90> unscrambledeggs;
 	int binVal = 0;
 	int checksum = 0;
 	double timestamp = 0;
@@ -69,6 +74,8 @@ public:
 		currPos(0),
 		heldPos(0),
 		BufferSize(14),
+		blackoutcount(0),
+		blackouthigh(0),
 		kRot(0),
 		work(0),
 		toggle(0),
@@ -79,6 +86,8 @@ public:
 		pixytestamount(0),
 		bits(0),
 		latchB(0),
+		blackout(0),
+		noobject(0),
 		sync(0),
 		checksum(0),
 		timestamp(0),
@@ -332,31 +341,79 @@ private:
 		pixyi2c->ReadOnly(90, readBuffer);
 		//Put to DashBoard
 
+		if(readBuffer[1]==0)
+		{
+			blackout=true;
+			blackoutcount+=1;
+		}
+		else
+		{
+			blackout=false;
+			noobject=false;
+			if(blackoutcount==BLACKOUT_TIME)
+			{
+				noobject=true;
+			}
+			blackoutcount=0;
+		}
+
+		if(!blackout&&!noobject)
+		{
+			shiftarray.empty();
+			if(readBuffer[0]==0)
+			{
+
+				for(int i=1; i<16; i++)
+				{
+					shiftarray[i-1] = readBuffer[i];
+				}
+
+			}
+			else
+			{
+
+				for(int i=0; i<16; i++)
+				{
+					 shiftarray[i]=readBuffer[i];
+				}
+
+			}
 
 
+			for(int i=0;i<8;i++)
+			{
+				unscrambledeggs[i]=((shiftarray[i*2])+(shiftarray[(i*2)+1]*256));
+			}
+			for(int i = 0;i<1;i++)
+			{
+				int j,x;
+				j=0;
+				x=((shiftarray[j*2])+(shiftarray[(j*2)+1]*256));
+				unscrambledeggs[0]=x;
+
+				SmartDashboard::PutNumber("Byte 0",x);
+				SmartDashboard::PutNumber("Byte 1",x*0+69);
+				SmartDashboard::PutNumber("Testing Stuff", unscrambledeggs[0]);
+			}
+
+			if(unscrambledeggs[0]==43605)
+			{
+			SmartDashboard::PutNumber("First Start Byte",unscrambledeggs[0]);
+			SmartDashboard::PutNumber("Second Start Byte",unscrambledeggs[1]);
+			SmartDashboard::PutNumber("Checksum",unscrambledeggs[2]);
+			SmartDashboard::PutNumber("Signature",unscrambledeggs[3]);
+			SmartDashboard::PutNumber("X",unscrambledeggs[4]);
+			SmartDashboard::PutNumber("Y",unscrambledeggs[5]);
+			SmartDashboard::PutNumber("Width",unscrambledeggs[6]);
+			SmartDashboard::PutNumber("Height",unscrambledeggs[7]);
+			}
+		}
 
 
+		SmartDashboard::PutNumber("Blackout Count",blackoutcount);
+		SmartDashboard::PutNumber("Blackout High",blackouthigh);
 
-
-		SmartDashboard::PutNumber("ReadBuffer",readBuffer[Val]);
-		SmartDashboard::PutNumber("ReadBuffer 0",readBuffer[0]);
-		SmartDashboard::PutNumber("ReadBuffer 1",readBuffer[1]);
-		SmartDashboard::PutNumber("ReadBuffer 2",readBuffer[2]);
-		SmartDashboard::PutNumber("ReadBuffer 3",readBuffer[3]);
-		SmartDashboard::PutNumber("ReadBuffer 4",readBuffer[4]);
-		SmartDashboard::PutNumber("ReadBuffer 5",readBuffer[5]);
-		SmartDashboard::PutNumber("ReadBuffer 6",readBuffer[6]);
-		SmartDashboard::PutNumber("ReadBuffer 7",readBuffer[7]);
-		SmartDashboard::PutNumber("ReadBuffer 8",readBuffer[8]);
-		SmartDashboard::PutNumber("ReadBuffer 9",readBuffer[9]);
-		SmartDashboard::PutNumber("ReadBuffer 10",readBuffer[10]);
-		SmartDashboard::PutNumber("ReadBuffer 11",readBuffer[11]);
-		SmartDashboard::PutNumber("ReadBuffer 12",readBuffer[12]);
-		SmartDashboard::PutNumber("ReadBuffer 13",readBuffer[13]);
-		SmartDashboard::PutNumber("ReadBuffer 14",readBuffer[14]);
-		SmartDashboard::PutNumber("ReadBuffer 15",readBuffer[15]);
-		SmartDashboard::PutNumber("ReadBuffer 16",readBuffer[16]);
-
+		SmartDashboard::PutNumber("Data Tests",readBuffer[1]);
 		//Checks for new Color and Sends to Arduino
 		LEDcolor();
 	}
